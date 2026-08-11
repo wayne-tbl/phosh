@@ -1,0 +1,8 @@
+[Plugin]
+# Translators: This is an internal id, no need to translate it
+Id=@name@
+Name=Screen Recorder Quick Setting
+Types=quick-setting;
+Comment=Start and stop a screen recording
+Plugin=@plugins_dir@/libphosh-plugin-@name@.so
+Icon=screen-recorder-quick-setting

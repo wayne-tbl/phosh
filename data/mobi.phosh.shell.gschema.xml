@@ -255,5 +255,260 @@
         Apps in this list will not appear in the launcher or app drawer.
       </description>
     </key>
+
+    <key name="accent-color-custom" type="s">
+      <default>''</default>
+      <summary>Custom accent colour</summary>
+      <description>
+        A free-form accent colour for the shell, as any colour GDK can parse,
+        for example '#3584e4'. When set this overrides the accent chosen in
+        Settings, so the shell is not limited to the nine preset swatches.
+        Empty means follow that setting. Note that GTK4 applications only
+        understand the presets, so a custom colour applies to the shell alone.
+      </description>
+    </key>
+
+    <key name="glass-text-color" type="s">
+      <default>''</default>
+      <summary>Shell text colour</summary>
+      <description>
+        A free-form colour for the shell's text and icons, as any colour GDK
+        can parse. Every piece of shell text follows this, including text
+        drawn on an accent fill. Empty follows the theme, which is near-white
+        on the dark variant and near-black on the light one.
+      </description>
+    </key>
+
+    <key name="glass-accent-text-color" type="s">
+      <default>''</default>
+      <summary>Colour of text drawn on the accent</summary>
+      <description>
+        The colour of labels and icons sitting on top of an accent fill -- a
+        selected quick setting, a pressed keypad key, a card. This is a
+        different question from the main text colour only if you want it to
+        be. Empty follows the main text colour, so all of the shell's text
+        matches unless this is set deliberately.
+      </description>
+    </key>
+
+    <key name="glass-text-shadow-color" type="s">
+      <default>''</default>
+      <summary>Colour of the drop shadow behind shell text</summary>
+      <description>
+        The colour of the small drop shadow carried by the shell's text and
+        icons, most visibly the lock screen clock, date and status labels,
+        which sit over a wallpaper the shell does not choose. Empty follows
+        the text colour in use and takes the opposite of it, so light text
+        gets a dark shadow and dark text a light one. Changing glass-text-color
+        is therefore enough on its own; this key is for the case where the
+        wallpaper wants a shadow that is neither.
+      </description>
+    </key>
+
+    <key name="glass-text-shadow" type="d">
+      <default>0.7</default>
+      <range min="0.0" max="1.0"/>
+      <summary>Strength of the drop shadow behind shell text</summary>
+      <description>
+        How opaque that shadow is. 0 turns it off entirely. The offset stays
+        small and fixed -- one to three pixels depending on the size of the
+        text, always more than the blur under it, because a blur wider than
+        its offset is a glow rather than a shadow. It is there to hold text
+        legible against an arbitrary wallpaper, not to be seen in its own
+        right.
+      </description>
+    </key>
+
+    <key name="glass-text-opacity" type="d">
+      <default>1.0</default>
+      <range min="0.2" max="1.0"/>
+      <summary>Shell text opacity</summary>
+      <description>
+        How opaque the shell's text and icons are. Lower values let the
+        frosted backdrop show through the text itself. The floor is deliberate:
+        text that can be turned fully invisible is a way to make the shell
+        unusable with no obvious way back.
+      </description>
+    </key>
+
+    <key name="lockscreen-tint" type="b">
+      <default>true</default>
+      <summary>Tint the wallpaper behind the lock screen clock</summary>
+      <description>
+        Whether the lock screen lays its translucent sheet over the wallpaper
+        on the page showing the clock and date. On, the wallpaper is dimmed and
+        the clock stays legible over a bright or busy picture. Off, the picture
+        is shown as it is.
+
+        The keypad page keeps its sheet either way: the keys and the passcode
+        entry need a surface to sit on.
+      </description>
+    </key>
+
+    <key name="wallpaper-folder" type="s">
+      <default>''</default>
+      <summary>Folder to rotate the wallpaper through</summary>
+      <description>
+        A folder of images. Each time the lock screen appears -- when the phone
+        locks, and whenever the screen is woken while it is still locked -- the
+        next image in the folder becomes the wallpaper, in filename order.
+        Empty turns this off and leaves the wallpaper alone.
+
+        Both the light and the dark wallpaper are set, so the rotation is
+        visible whichever colour scheme is in use.
+      </description>
+    </key>
+
+    <key name="glass-blur-radius" type="u">
+      <default>100</default>
+      <range min="0" max="200"/>
+      <summary>Background blur radius</summary>
+      <description>
+        How strongly the compositor blurs what is behind the shell's glass
+        surfaces: the top panel, the settings drawer and the lock screen.
+        0 turns the blur off. Needs a compositor that supports background
+        blur; without one this has no effect.
+      </description>
+    </key>
+
+    <key name="glass-opacity" type="d">
+      <default>0.15</default>
+      <range min="0.0" max="1.0"/>
+      <summary>Glass opacity</summary>
+      <description>
+        How solid the shell's glass surfaces are. 0.0 is fully transparent
+        and 1.0 is opaque, hiding the blur behind it entirely. Other glass
+        surfaces are scaled from this, keeping their relative weights.
+        Application windows keep a small minimum whatever this is set to,
+        since a window with no background at all leaves its text floating on
+        the wallpaper.
+      </description>
+    </key>
+
+    <key name="glass-lightness" type="d">
+      <default>0.15</default>
+      <range min="0.0" max="1.0"/>
+      <summary>Glass lightness</summary>
+      <description>
+        How much white is mixed into the glass, for a frostier and paler
+        look. 0.0 keeps the theme's own background colour.
+      </description>
+    </key>
+
+    <key name="glass-accent-wash" type="d">
+      <default>0.15</default>
+      <range min="0.0" max="1.0"/>
+      <summary>Accent wash strength</summary>
+      <description>
+        How much of the accent colour is washed into the glass surfaces, so
+        that the drawer, lock screen and overview carry the accent chosen in
+        Settings. 0.0 leaves them neutral. The light theme uses a lower
+        proportion of this, since a tint reads more strongly against a pale
+        background.
+      </description>
+    </key>
+
+    <key name="screen-recorder-framerate" type="i">
+      <default>0</default>
+      <range min="0" max="240"/>
+      <summary>Screen recording frame rate</summary>
+      <description>
+        Frames per second to record at. 0 means let the compositor's own frame
+        timing decide, which is the only setting that produces a file whose
+        timestamps are true: a forced rate is stamped on the frames whatever
+        rate they actually arrived at, so any difference between the two shows
+        up as playback running fast or slow. The fixed rates are here for the
+        cases where a constant-rate file is needed by something downstream.
+      </description>
+    </key>
+
+    <key name="screenshot-delay" type="i">
+      <default>3</default>
+      <range min="1" max="5"/>
+      <summary>Screenshot delay in seconds</summary>
+      <description>
+        How long to wait between arming a screenshot from the quick settings
+        and taking it. The wait is what makes the shot useful at all from
+        there: the drawer has to be folded away first or it is the only thing
+        in the picture.
+
+        Whatever was picked last is stored here and offered as the default next
+        time, so the common case is two taps rather than a decision.
+      </description>
+    </key>
+
+    <key name="screen-recorder-speed" type="d">
+      <default>1.0</default>
+      <range min="0.25" max="16.0"/>
+      <summary>Screen recording playback speed</summary>
+      <description>
+        How much faster than real time the finished recording plays. 1.0 is
+        real time; 2.0 plays twice as fast.
+
+        This is applied after recording, by rescaling the timestamps and
+        copying the streams through untouched, so it is exact and costs a
+        fraction of a second whatever the length. Doing it instead by forcing
+        a capture frame rate would only ever be approximate: the speed-up
+        would be the ratio of the forced rate to the rate frames really
+        arrived at, and that rate varies with what is on screen.
+      </description>
+    </key>
+
+    <key name="screen-recorder-codec" type="s">
+      <default>'libx264'</default>
+      <summary>Screen recording video codec</summary>
+      <description>
+        The ffmpeg encoder to use. This device has no VAAPI -- the Mali G68 and
+        the MediaTek encoder are both unusable through wf-recorder here -- so
+        every workable choice is a software encoder and libx264 at a fast
+        preset is the one measured to keep up with the display.
+
+        Settings offers libx264 and libvpx-vp9. libx265 is not offered: measured
+        at 1078x2410 it encodes about five frames a second even at
+        preset=ultrafast, so a recording made with it is a handful of frames.
+      </description>
+    </key>
+
+    <key name="screen-recorder-bitrate" type="s">
+      <default>''</default>
+      <summary>Screen recording bit rate</summary>
+      <description>
+        Target bit rate, as an ffmpeg value such as '8M'. Empty lets the codec
+        choose its own quality target, which for libx264 means constant
+        quality rather than constant rate and generally gives a smaller file
+        for the same picture.
+      </description>
+    </key>
+
+    <key name="screen-recorder-audio" type="b">
+      <default>false</default>
+      <summary>Record audio</summary>
+      <description>
+        Whether to record sound alongside the picture. Off records no audio at
+        all rather than a silent track.
+      </description>
+    </key>
+
+    <key name="screen-recorder-audio-source" type="s">
+      <default>''</default>
+      <summary>Audio source to record from</summary>
+      <description>
+        The PulseAudio/PipeWire source name to capture. A monitor source
+        records what the phone is playing; an input source records the
+        microphone. Empty uses the system default input. Ignored unless audio
+        recording is on.
+      </description>
+    </key>
+
+    <key name="screen-recorder-touches" type="b">
+      <default>true</default>
+      <summary>Show touches while recording</summary>
+      <description>
+        Draw a marker wherever the screen is touched, for as long as a
+        recording is running, so that a recording explains itself. This is the
+        compositor's own touch-point overlay, switched on when recording starts
+        and off again when it stops.
+      </description>
+    </key>
   </schema>
 </schemalist>

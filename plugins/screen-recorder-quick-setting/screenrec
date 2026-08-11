@@ -1,0 +1,274 @@
+#!/bin/bash
+#
+# Start or stop a screen recording. Run it once to start, again to stop.
+#
+# Two things about this device shape the command below:
+#
+#   --no-dmabuf   There is no EGL_EXT_image_dma_buf_import here (hybris, android
+#                 wlroots renderer), so the compositor cannot hand over GPU
+#                 buffers. Without this flag wf-recorder asks for them anyway
+#                 and dies with "Failed to copy frame too many times".
+#
+#   -D            Ask for frames continuously instead of only when the screen
+#                 changes. Without it a still screen produces a valid encoder
+#                 and zero frames, and the recording is an empty file -- which
+#                 looks exactly like capture being broken.
+#
+#   libx264       Not the MediaTek hardware encoder. /dev/video2 opens and
+#                 reports itself fine, then produces nothing usable through
+#                 wf-recorder whatever pixel format it is given. Software
+#                 ultrafast keeps up at the full 1078x2410 -- measured at ~26fps
+#                 over ten seconds of wall clock, against ~13 for VP9 and about
+#                 5 for x265, which is why those two are not the default.
+#
+# Everything else is read from GSettings, fresh at each start, so a change in
+# Settings applies to the next recording without touching this file. The
+# SCREENREC_* environment variables still override, for one-off runs from a
+# terminal.
+
+set -u
+
+SCHEMA=io.furios.phosh.shell
+
+PIDFILE="${XDG_RUNTIME_DIR:-/tmp}/screenrec.pid"
+OUTDIR="${SCREENREC_DIR:-$HOME/Videos/Screencasts}"
+
+# ---- settings --------------------------------------------------------------
+# gsettings quotes strings and prints booleans as true/false, so each type needs
+# its own unwrapping. A missing schema or key falls back to the default given
+# here rather than producing an empty flag.
+
+get_str () {
+  local v
+  v=$(gsettings get "$SCHEMA" "$1" 2>/dev/null) || v=""
+  v=${v#\'}; v=${v%\'}
+  [ -n "$v" ] && printf '%s' "$v" || printf '%s' "${2:-}"
+}
+
+get_num () {
+  local v
+  v=$(gsettings get "$SCHEMA" "$1" 2>/dev/null) || v=""
+  # Integer-typed keys print with their type in front, as "uint32 68". Drop it,
+  # so this helper does not silently fall back to the default if a key's type
+  # is ever widened.
+  v=${v##* }
+  case "$v" in
+    ''|*[!0-9.]*) printf '%s' "$2" ;;
+    *)            printf '%s' "$v" ;;
+  esac
+}
+
+get_bool () {
+  local v
+  v=$(gsettings get "$SCHEMA" "$1" 2>/dev/null) || v="$2"
+  [ "$v" = "true" ]
+}
+
+# ---- notifications ---------------------------------------------------------
+# libnotify 0.8 sends --icon as the image-path hint and leaves app_icon empty,
+# so the desktop-entry hint is what puts an icon on the notification header.
+NOTIFY_ID=mobi.phosh.ScreenRecorder
+
+notify () {
+  notify-send -a "Screen Recorder" -i "camera-video-symbolic" \
+              -h "string:desktop-entry:$NOTIFY_ID" "$1" "${2:-}" 2>/dev/null || true
+}
+
+# Offer to open the finished file. -A implies --wait, so this has to run
+# detached or the script would sit here until the notification is dismissed.
+notify_saved () {
+  local title=$1 body=$2 file=$3
+  (
+    action=$(notify-send -a "Screen Recorder" -i "camera-video-symbolic" \
+                         -h "string:desktop-entry:$NOTIFY_ID" \
+                         -A "open=Open" "$title" "$body" 2>/dev/null)
+    [ "$action" = "open" ] && xdg-open "$file" >/dev/null 2>&1
+  ) >/dev/null 2>&1 &
+  disown 2>/dev/null || true
+}
+
+# ---- finish ----------------------------------------------------------------
+# Apply the chosen playback speed by rescaling the timestamps and copying the
+# streams through untouched. This is exact, lossless and takes a fraction of a
+# second whatever the length. Forcing a capture frame rate instead would only
+# ever be approximate: the speed-up would be the ratio of the forced rate to
+# the rate frames really arrived at, and that varies with what is on screen.
+apply_speed () {
+  local file=$1 speed=$2 tmp
+
+  awk -v s="$speed" 'BEGIN { exit !(s > 0.999 && s < 1.001) }' && return 0
+
+  tmp="${file%.mp4}.speed.mp4"
+  if ffmpeg -v error -y -itsscale "$(awk -v s="$speed" 'BEGIN { printf "%.6f", 1.0 / s }')" \
+            -i "$file" -c copy "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+    mv -f "$tmp" "$file"
+  else
+    # A failed rescale must not cost the recording -- keep the real-time file.
+    rm -f "$tmp"
+    notify "Speed change failed" "Saved at normal speed instead"
+  fi
+}
+
+stop_touches () {
+  gsettings set sm.puri.phoc touch-points false 2>/dev/null || true
+}
+
+# Is this pid still the recorder we started, or somebody who inherited the
+# number? A pidfile outlives a crash and the kernel reuses pids, so without
+# this check stopping a recording that is no longer running would send SIGINT
+# to whatever process happens to hold that pid now.
+is_recorder () {
+  case "$(cat "/proc/$1/comm" 2>/dev/null)" in
+    wf-recorder*) return 0 ;;
+  esac
+  return 1
+}
+
+# ---- stop an existing recording -------------------------------------------
+# The pidfile holds three lines -- pid, filename, speed -- so read the pid
+# alone: passing the whole file to kill silently fails the check and starts a
+# second recording instead of stopping the first. The speed is recorded at
+# start so that changing the setting mid-recording cannot retime a file that
+# was already captured under the old value.
+if [ -f "$PIDFILE" ] && kill -0 "$(head -1 "$PIDFILE")" 2>/dev/null &&
+   is_recorder "$(head -1 "$PIDFILE")"; then
+  pid=$(head -1 "$PIDFILE")
+  file=$(sed -n 2p "$PIDFILE")
+  speed=$(sed -n 3p "$PIDFILE")
+  [ -n "$speed" ] || speed=1.0
+
+  # SIGINT, not SIGTERM: wf-recorder needs to flush the encoder and write the
+  # index, and a killed file is unplayable.
+  kill -INT "$pid" 2>/dev/null
+  for _ in $(seq 1 40); do
+    kill -0 "$pid" 2>/dev/null || break
+    sleep 0.25
+  done
+  rm -f "$PIDFILE"
+
+  stop_touches
+
+  if [ -s "$file" ]; then
+    apply_speed "$file" "$speed"
+    size=$(du -h "$file" | cut -f1)
+    dur=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$file" 2>/dev/null)
+    detail="$(basename "$file") · $size"
+    [ -n "$dur" ] && detail="$detail · $(awk -v d="$dur" 'BEGIN { printf "%d:%02d", d/60, d%60 }')"
+    awk -v s="$speed" 'BEGIN { exit !(s > 1.001 || s < 0.999) }' && detail="$detail · ${speed}x"
+    notify_saved "Recording saved" "$detail" "$file"
+    echo "saved $file ($size)"
+  else
+    notify "Recording failed" "Nothing was captured"
+    echo "failed: no output"
+    exit 1
+  fi
+  exit 0
+fi
+
+# A stale pidfile from a crash would otherwise block every future recording
+rm -f "$PIDFILE"
+
+# ---- start ----------------------------------------------------------------
+mkdir -p "$OUTDIR"
+file="$OUTDIR/screencast-$(date +%Y%m%d-%H%M%S).mp4"
+
+speed=$(get_num screen-recorder-speed 1.0)
+codec=$(get_str screen-recorder-codec libx264)
+bitrate=$(get_str screen-recorder-bitrate "")
+framerate=$(get_num screen-recorder-framerate 0)
+
+# Codec parameters. A bit rate target replaces the quality target rather than
+# joining it -- x264 given both ignores one of them, and which one depends on
+# the build.
+popt=()
+case "$codec" in
+  libx264|libx265) popt=(-p preset=ultrafast -p tune=zerolatency) ;;
+  # libvpx defaults to a quality deadline, which on this CPU encodes at a
+  # fraction of real time and silently drops most of the frames. Measured at
+  # 1078x2410: 6.2s captured out of 10s of wall clock with the defaults,
+  # against 11.0s for x264. realtime + the fastest cpu-used is what makes VP9
+  # usable here at all.
+  libvpx-vp9|libvpx) popt=(-p deadline=realtime -p cpu-used=8 -p row-mt=1) ;;
+esac
+if [ -n "$bitrate" ]; then
+  popt+=(-p "b=$bitrate")
+elif [ "$codec" = "libx264" ] || [ "$codec" = "libx265" ]; then
+  popt+=(-p crf=23)
+fi
+
+# A forced rate is off by default. See apply_speed above for why it is the
+# wrong tool for a deliberate speed-up; it exists for the case where something
+# downstream insists on a constant-rate file.
+ropt=()
+awk -v r="$framerate" 'BEGIN { exit !(r >= 1) }' && ropt=(-r "$framerate")
+
+# Audio, off unless asked for. SCREENREC_AUDIO still takes:
+#   mic     the microphone, for narrating
+#   system  what the phone is playing, for a demo
+#   <name>  any source from: pactl list short sources
+aopt=()
+audio="${SCREENREC_AUDIO:-}"
+if [ -n "$audio" ]; then
+  case "$audio" in
+    mic)     aopt=(--audio=source.primary_input) ;;
+    system)  aopt=(--audio=sink.primary_output.monitor) ;;
+    *)       aopt=(--audio="$audio") ;;
+  esac
+elif get_bool screen-recorder-audio false; then
+  src=$(get_str screen-recorder-audio-source "")
+  if [ -n "$src" ]; then
+    aopt=(--audio="$src")
+  else
+    aopt=(--audio)
+  fi
+fi
+
+wf-recorder --no-dmabuf -D \
+            -c "$codec" "${popt[@]}" "${ropt[@]}" "${aopt[@]}" \
+            -f "$file" >/dev/null 2>&1 &
+pid=$!
+
+# wf-recorder exits within a second or so if it cannot capture at all
+sleep 1.5
+if ! kill -0 "$pid" 2>/dev/null; then
+  notify "Recording failed" "Is the screen awake?"
+  echo "failed to start (screen asleep, or capture unavailable)"
+  exit 1
+fi
+
+printf '%s\n%s\n%s\n' "$pid" "$file" "$speed" > "$PIDFILE"
+
+# Say so when the recording ends by itself. It cannot survive the screen going
+# off: wlr-screencopy has nothing to hand over while the output is powered
+# down, so wf-recorder runs out of retries and exits. Without this the drawer
+# button just quietly goes back to idle and the recording is simply missing.
+(
+  while kill -0 "$pid" 2>/dev/null; do sleep 1; done
+  if [ -f "$PIDFILE" ] && [ "$(head -1 "$PIDFILE")" = "$pid" ]; then
+    rm -f "$PIDFILE"
+    stop_touches
+    if [ -s "$file" ]; then
+      apply_speed "$file" "$speed"
+      notify_saved "Recording ended" \
+                   "The screen turned off. Saved $(basename "$file")." "$file"
+    else
+      notify "Recording stopped" "The screen turned off before anything was captured."
+      rm -f "$file"
+    fi
+  fi
+) >/dev/null 2>&1 &
+disown 2>/dev/null || true
+
+# Show where the screen is being touched, so a recording explains itself. This
+# is a runtime setting rather than the PHOC_DEBUG env var precisely so it can go
+# away again when the recording stops. SCREENREC_TOUCHES=0 turns it off.
+if [ "${SCREENREC_TOUCHES:-}" = "0" ]; then
+  :
+elif [ "${SCREENREC_TOUCHES:-}" = "1" ] || get_bool screen-recorder-touches true; then
+  gsettings set sm.puri.phoc touch-points true 2>/dev/null || true
+fi
+
+msg="Tap again to stop"
+awk -v s="$speed" 'BEGIN { exit !(s > 1.001 || s < 0.999) }' && msg="$msg · saving at ${speed}x"
+notify "Recording started" "$msg"
+echo "recording to $file (pid $pid)"

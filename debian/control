@@ -142,8 +142,13 @@ Depends:
  gsettings-desktop-schemas,
  phoc (>= 0.13.1),
  phosh (= ${binary:Version}),
+ wf-recorder,
  ${misc:Depends},
  ${shlibs:Depends},
+Recommends:
+ ffmpeg,
+ libnotify-bin,
+ pulseaudio-utils,
 Breaks:
  phosh-mobile-settings (<< 0.44~),
 Description: Pure Wayland shell for mobile devices - Plugins

@@ -1,0 +1,23 @@
+# Fit the whole picture on screen rather than filling it and cropping.
+#
+# GNOME's default is 'zoom', which covers the screen and crops whatever does
+# not fit. That suits a wallpaper chosen for the shape of the screen. It suits
+# a phone badly: the pictures people actually use are photographs they took,
+# and a 4:3 photograph on a 20:9 screen loses most of its width to a crop it
+# has no say over. 'scaled' keeps all of the picture.
+#
+# Both keys, because the lock screen has a wallpaper of its own.
+#
+# The sections are desktop scoped, ":Phosh" matching XDG_CURRENT_DESKTOP. That
+# is not decoration: 00_mobi.Phosh.gschema.override sets
+# [org.gnome.desktop.screensaver:Phosh] picture-options='none', and a desktop
+# scoped default beats a generic one whatever the filenames sort like. A plain
+# [org.gnome.desktop.screensaver] section here is silently ignored -- which is
+# also why FuriOS's own 10_furios-default-settings override of the same key has
+# never taken effect either.
+
+[org.gnome.desktop.background:Phosh]
+picture-options='scaled'
+
+[org.gnome.desktop.screensaver:Phosh]
+picture-options='scaled'

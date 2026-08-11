@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Screen Recorder
+Comment=Record the screen from the quick settings
+Exec=/usr/libexec/phosh-screenrec
+Icon=camera-video-symbolic
+Terminal=false
+# Exists so the recorder's notifications have an icon and a name to show under;
+# libnotify 0.8 leaves app_icon empty. NoDisplay: the tile is the interface.
+NoDisplay=true
+Categories=AudioVideo;Recorder;
+Keywords=screencast;record;capture;

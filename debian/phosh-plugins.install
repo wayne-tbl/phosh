@@ -4,3 +4,5 @@ usr/lib/*/phosh/plugins/prefs/libphosh-plugin-prefs-*.so
 usr/share/glib-2.0/schemas/mobi.phosh.plugins.*.gschema.xml
 usr/share/glib-2.0/schemas/sm.puri.phosh.plugins.*.gschema.xml
 usr/share/phosh/plugins/icons/*.svg
+usr/libexec/phosh-screenrec
+usr/share/applications/mobi.phosh.ScreenRecorder.desktop

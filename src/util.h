@@ -9,10 +9,30 @@
 #pragma once
 
 #include <gtk/gtk.h>
+#include <gdesktop-enums.h>
 #include <gio/gdesktopappinfo.h>
 #include <wayland-client-protocol.h>
 
 G_BEGIN_DECLS
+
+/* FuriOS glass look: how strong the background blur is, how solid and how
+ * accent-tinted the glass surfaces are, and an optional free-form accent
+ * colour that overrides the nine-swatch choice in Settings. Shared by the
+ * style manager, which turns them into colours, and by the surfaces that
+ * ask the compositor for blur. */
+#define PHOSH_GLASS_SCHEMA_ID         "io.furios.phosh.shell"
+#define PHOSH_GLASS_KEY_BLUR_RADIUS   "glass-blur-radius"
+#define PHOSH_KEY_WALLPAPER_FOLDER    "wallpaper-folder"
+#define PHOSH_KEY_LOCKSCREEN_TINT     "lockscreen-tint"
+#define PHOSH_GLASS_KEY_OPACITY       "glass-opacity"
+#define PHOSH_GLASS_KEY_LIGHTNESS     "glass-lightness"
+#define PHOSH_GLASS_KEY_ACCENT_WASH   "glass-accent-wash"
+#define PHOSH_GLASS_KEY_ACCENT_CUSTOM "accent-color-custom"
+#define PHOSH_GLASS_KEY_TEXT_COLOR    "glass-text-color"
+#define PHOSH_GLASS_KEY_TEXT_OPACITY  "glass-text-opacity"
+#define PHOSH_GLASS_KEY_ACCENT_TEXT   "glass-accent-text-color"
+#define PHOSH_GLASS_KEY_TEXT_SHADOW   "glass-text-shadow"
+#define PHOSH_GLASS_KEY_SHADOW_COLOR  "glass-text-shadow-color"
 
 #define phosh_async_error_warn(err, ...) \
   phosh_error_warnv (G_LOG_DOMAIN, err, G_IO_ERROR, G_IO_ERROR_CANCELLED, __VA_ARGS__)
@@ -81,6 +101,8 @@ const char      *phosh_util_get_icon_by_wifi_strength (guint strength, gboolean 
 gboolean         phosh_util_file_equal (GFile *file1, GFile *file2);
 GdkPixbuf       *phosh_util_data_uri_to_pixbuf (const char *uri, GError **error);
 GdkPixbuf *      phosh_utils_pixbuf_scale_to_min (GdkPixbuf *src, int min_width, int min_height);
+GdkPixbuf *      phosh_utils_pixbuf_for_style (GdkPixbuf *src, int width, int height,
+                                               GDesktopBackgroundStyle style, GdkRGBA *color);
 gboolean         phosh_util_matches_app_info (GAppInfo *info, const char *search);
 GStrv            phosh_util_append_to_strv (GStrv array, const char *element);
 GStrv            phosh_util_remove_from_strv (GStrv array, const char *element);

@@ -166,35 +166,16 @@ image_background (PhoshBackgroundImage    *image,
                   GDesktopBackgroundStyle  style,
                   GdkRGBA                 *color)
 {
-  GdkPixbuf *scaled_bg = NULL;;
-
   if (image == NULL) {
     g_debug ("No image, using 'none' desktop style");
-    style = G_DESKTOP_BACKGROUND_STYLE_NONE;
+    return NULL;
   }
 
-  switch (style) {
-  case G_DESKTOP_BACKGROUND_STYLE_NONE:
-    /* Nothing to do */
-    break;
-  case G_DESKTOP_BACKGROUND_STYLE_SCALED:
-    scaled_bg = pb_scale_to_fit (phosh_background_image_get_pixbuf (image), width, height, color);
-    break;
-  case G_DESKTOP_BACKGROUND_STYLE_WALLPAPER:
-  case G_DESKTOP_BACKGROUND_STYLE_CENTERED:
-  case G_DESKTOP_BACKGROUND_STYLE_STRETCHED:
-  case G_DESKTOP_BACKGROUND_STYLE_SPANNED:
-    g_warning ("Unimplemented style %d, using zoom", style);
-    G_GNUC_FALLTHROUGH;
-  case G_DESKTOP_BACKGROUND_STYLE_ZOOM:
-  default:
-    scaled_bg = phosh_utils_pixbuf_scale_to_min (phosh_background_image_get_pixbuf (image),
-                                                 width,
-                                                 height);
-    break;
-  }
+  if (style == G_DESKTOP_BACKGROUND_STYLE_NONE)
+    return NULL;
 
-  return scaled_bg;
+  return phosh_utils_pixbuf_for_style (phosh_background_image_get_pixbuf (image),
+                                       width, height, style, color);
 }
 
 

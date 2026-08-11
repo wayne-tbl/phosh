@@ -7,8 +7,10 @@ phosh-top-panel {
   color: @phosh_fg_color;
 }
 
+/* Single glass sheet behind the unfolded panel / settings area.
+   Kept light since the compositor blurs the content behind it */
 phosh-top-panel-bg {
-  background: @phosh_bg_color;
+  background: @phosh_glass_sheet_color;
 }
 
 #top-bar-bin {
@@ -16,11 +18,12 @@ phosh-top-panel-bg {
 }
 
 #top-bar-bin:not(.p-solid) #top-bar label {
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  /* Kept tight: this text is small and already sits on the panel's glass */
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 #top-bar-bin:not(.p-solid) #top-bar image {
-  -gtk-icon-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  -gtk-icon-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 #top-bar {
@@ -71,17 +74,23 @@ phosh-top-panel .phosh-topbar-date {
  * Settings menu
  */
 
+/* Settings surfaces are a light tint only — phosh-top-panel-bg carries the
+   glass, so keep these low-alpha to avoid stacking into a solid color */
 widget.phosh-settings-menu > scrolledwindow {
-    background-color: @phosh_bg_color;
+    background-color: @phosh_glass_tint_color;
     border-radius: 24px;
     margin-left: 6px;
     margin-right: 6px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.3),
+                inset 0 1px 0 alpha(@phosh_fg_color,.06),
+                inset 0 0 0 1px alpha(@phosh_fg_color,.04);
 }
 
 .phosh-settings-menu {
-  background-color: @phosh_bg_color;
-  border-bottom-right-radius: 12px;
-  border-bottom-left-radius: 12px;
+  background-color: @phosh_glass_tint_color;
+  border-bottom-right-radius: 24px;
+  border-bottom-left-radius: 24px;
+  box-shadow: 0 12px 32px rgba(0,0,0,.35);
 }
 
 .phosh-settings-menu button.circular:not(:hover):not(:active) {
@@ -102,6 +111,8 @@ phosh-quick-setting {
   font-weight: bold;
   font-size: 10pt;
   background-color: @phosh_button_bg_color;
+  box-shadow: inset 0 1px 0 alpha(@phosh_fg_color,.08),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.06);
 }
 
 phosh-quick-setting button:hover {
@@ -113,9 +124,24 @@ phosh-quick-setting:checked button:hover {
   color: @theme_selected_fg_color;
 }
 
-phosh-quick-setting:checked {
+/* The colour has to be repeated on the children: the GTK theme sets a colour
+   on `button` itself, which beats inheriting from the widget above, so a
+   checked quick setting kept the theme's plain foreground -- black on light,
+   white on dark -- whatever the accent text colour was set to. */
+phosh-quick-setting:checked,
+phosh-quick-setting:checked button,
+phosh-quick-setting:checked button label,
+phosh-quick-setting:checked button image,
+phosh-quick-setting:checked label,
+phosh-quick-setting:checked image {
   background-color: @theme_selected_bg_color;
   color: @theme_selected_fg_color;
+}
+
+phosh-quick-setting:checked button,
+phosh-quick-setting:checked button label,
+phosh-quick-setting:checked button image {
+  background-color: transparent;
 }
 
 phosh-quick-setting:disabled {
@@ -179,10 +205,13 @@ button.phosh-settings-details:focus {
 
 /* Listboxes in settings (e.g. audio details) */
 .phosh-settings-list-box {
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 12px;
   border: none;
   background-color: @phosh_notification_bg_color;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2),
+              inset 0 1px 0 alpha(@phosh_fg_color,.06),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.04);
 }
 
 .phosh-settings-list-box list {
@@ -206,10 +235,13 @@ button.phosh-settings-details:focus {
 
 /* Status pages of quick settings (e.g. audio wifi or bt status pages) */
 .phosh-status-page {
-  border-radius: 18px;
+  border-radius: 16px;
   padding: 12px 12px 6px;
   border: none;
   background-color: @phosh_notification_bg_color;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2),
+              inset 0 1px 0 alpha(@phosh_fg_color,.06),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.04);
 }
 
 .phosh-status-page list row:focus {
@@ -226,6 +258,35 @@ button.phosh-settings-details:focus {
 phosh-status-page-placeholder > box > label.title {
   font-weight: 400;
   font-size: 16px;
+}
+
+/* Empty states -- "No Notifications" and its bell, and the same placeholder
+   reused by the wifi and bluetooth status pages. Both halves were greyed by
+   the widget rather than by a colour we control: the icon carries .dim-label,
+   and the title is built with sensitive=0, so Adwaita paints it with
+   insensitive_fg_color. Neither follows the chosen text colour, and both fade
+   via opacity, which is applied after the colour resolves. State the colour
+   and clear the fade so an empty state is simply quiet text in the right
+   colour. */
+phosh-status-page-placeholder > box > label.title,
+phosh-status-page-placeholder > box > label.title:disabled,
+phosh-status-page-placeholder > box > image.icon,
+phosh-status-page-placeholder .dim-label {
+  color: @phosh_fg_color;
+  opacity: 1;
+}
+
+/* The drawer's own empty state is a different widget from the placeholder
+   above -- a plain box in settings.ui with the .phosh-notifications-empty
+   class -- and it stacks all three dimming mechanisms: dim-label on the box,
+   dim-label plus sensitive=0 on the bell, and sensitive=0 on the label. */
+.phosh-notifications-empty,
+.phosh-notifications-empty label,
+.phosh-notifications-empty label:disabled,
+.phosh-notifications-empty image,
+.phosh-notifications-empty image:disabled {
+  color: @phosh_fg_color;
+  opacity: 1;
 }
 
 /*
@@ -327,12 +388,12 @@ phosh-activity.phosh-empty.light .phosh-drawingarea {
 }
 
 phosh-activity.phosh-empty .phosh-drawingarea {
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: @theme_bg_color;
 }
 
 phosh-activity.phosh-maximized .phosh-drawingarea {
-  border-radius: 8px;
+  border-radius: 12px;
   background-color: @phosh_activity_bg_color;
 }
 
@@ -377,7 +438,7 @@ phosh-home {
   border-radius: 9999px;
   padding: 3px 18px 3px 14px;
   border: 1px solid transparent;
-  background-color: alpha(@phosh_bg_color,.6);
+  background-color: @phosh_glass_field_color;
   color: inherit;
 }
 
@@ -405,40 +466,40 @@ phosh-app-grid separator {
 
 phosh-app-grid-button button {
   font-size: 0.8rem;
-  border-radius: 9px;
+  border-radius: 12px;
   margin: 0;
   padding: 0;
   background: none;
 }
 
 phosh-home:not(.p-solid) phosh-app-grid label {
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 phosh-app-grid-button button:active,
 phosh-app-grid-button button:hover:active,
 phosh-app-grid-button button:focus {
-  background: alpha(@phosh_bg_color,.4);
+  background: @phosh_glass_button_color;
 }
 
 phosh-app-grid-folder-button button {
   font-size: 0.8rem;
-  border-radius: 9px;
+  border-radius: 12px;
   margin: 0;
   padding: 0;
-  background: alpha(@phosh_bg_color,.4);
+  background: @phosh_glass_button_color;
 }
 
 phosh-app-grid-folder-button button:active,
 phosh-app-grid-folder-button button:hover,
 phosh-app-grid-folder-button button:hover:active,
 phosh-app-grid-folder-button button:focus {
-  background: alpha(@phosh_bg_color,.6);
+  background: @phosh_glass_field_color;
 }
 
 .search-active phosh-app-grid-button:first-child button {
   box-shadow: inset 0 0 0 2px @theme_selected_bg_color;
-  background: alpha(@phosh_bg_color,.4);
+  background: @phosh_glass_button_color;
 }
 
 #phosh-filter-adaptive-btn {
@@ -455,13 +516,27 @@ phosh-app-grid-folder-button button:focus {
  * Lock screen
  */
 
+/* The compositor blurs the wallpaper drawn by phosh-lockscreen-bg underneath;
+   this sheet sits on that blur and is what keeps the clock legible over a
+   bright or busy wallpaper. Lower the alpha for more wallpaper, raise it for
+   more contrast. Without compositor blur it simply dims the wallpaper. */
 phosh-lockscreen {
-  background-color: transparent;
+  background-color: @phosh_glass_lock_color;
   color: @phosh_fg_color;
 }
 
+/* lockscreen-tint off, on the clock page: no sheet at all, so the wallpaper
+   is shown exactly as it is. */
+phosh-lockscreen.p-untinted {
+  background-color: transparent;
+}
+
 phosh-lockscreen-bg {
-  background-color: @phosh_bg_color;
+  background-color: @phosh_glass_bg_color;
+  background-image: linear-gradient(to bottom,
+                                    shade(@phosh_glass_bg_color, 1.7),
+                                    @phosh_glass_bg_color 45%,
+                                    shade(@phosh_glass_bg_color, 0.4));
   color: @phosh_fg_color;
 }
 
@@ -475,18 +550,25 @@ phosh-lockscreen-bg {
   font-weight: 300;
   font-size: 84px;
   font-feature-settings: "tnum";
+  letter-spacing: -2px;
   margin: 12px 0;
   transition: 200ms ease;
   padding-top: 40px;
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  color: @phosh_fg_color;
+  /* Equal offsets on both axes, so the light reads as coming from one corner
+     rather than from straight above, and a blur no larger than the offset so
+     it stays a shadow rather than a halo. Scaled up from the body rule only
+     because the glyph is 84px. */
+  text-shadow: 2px 2px 2px @phosh_text_shadow_color;
 }
 
 #phosh-lockscreen-date {
-  font-weight: 400;
+  font-weight: 500;
   font-size: 18px;
+  color: alpha(@phosh_fg_color, .85);
   margin: 6px 0;
   transition: 200ms ease;
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 .p-small #phosh-lockscreen-clock {
@@ -500,15 +582,21 @@ phosh-lockscreen-bg {
   transition: 200ms ease;
 }
 
-/* Lockscreen Arrow */
+/* Lockscreen Arrow. Reads as part of the "Slide up to unlock" label directly
+   beneath it, so it takes the same colour and the same halo -- an accent
+   coloured glyph over white text looked like one of the two was a mistake. */
 .phosh-lockscreen-arrow {
+  color: @phosh_fg_color;
+  -gtk-icon-shadow: 1px 1px 1px @phosh_text_shadow_color;
   transition: 400ms linear;
   animation: pulsate 1.8s ease-out;
   animation-iteration-count: 15;
 }
 
+/* "Slide up to unlock" */
 .phosh-lockscreen-arrow + label {
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  color: @phosh_fg_color;
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 .phosh-lockscreen-status-icons {
@@ -521,16 +609,18 @@ phosh-lockscreen-bg {
   font-size: 20px;
   padding: 6px;
   border-radius: 12px;
-  color: inherit;
+  color: @phosh_fg_color;
   border: none;
   box-shadow:none;
   outline: none;
   caret-color: transparent;
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
+/* "Enter Passcode", and the "Checking…" / wrong-passcode status it is reused for */
 .phosh-lockscreen-unlocker > label {
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  color: @phosh_fg_color;
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 @keyframes pulsate {
@@ -543,19 +633,26 @@ phosh-lockscreen-bg {
 phosh-keypad label.digit {
   font-size: 200%;
   font-weight: bold;
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
+/* Accent discs, translucent enough to let the backdrop through; a press takes
+   them to the full accent colour. Digits ride on @phosh_fg_color, which is
+   white on dark and near-black on light -- the disc is too pale on the light
+   variant for white to hold up. */
 phosh-keypad button {
   border-radius: 9999px;
   font-size: 16px;
   font-weight: bold;
   padding: 16px;
-  background: none;
+  color: @phosh_fg_color;
+  background: alpha(@theme_selected_bg_color, 0.75);
+  box-shadow: inset 0 1px 0 alpha(#ffffff,.14),
+              inset 0 0 0 1px alpha(#ffffff,.09);
 }
 
 phosh-keypad image {
-  -gtk-icon-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  -gtk-icon-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 phosh-keypad button:active label,
@@ -564,25 +661,135 @@ phosh-keypad button:active image {
   -gtk-icon-shadow: none;
 }
 
-phosh-keypad button:active,
-phosh-keypad button:hover,
-phosh-keypad button:hover:active,
-phosh-keypad button:focus {
-  background: alpha(@phosh_fg_color, 0.3);
+/* :active only, deliberately. On a touchscreen there is no pointer to leave a
+   widget, so GTK sets :hover on tap and nothing ever clears it, and :focus
+   outlives the press entirely. Styling either the same as the press left the
+   last key tapped latched at full accent, looking held down until some other
+   key was pressed. */
+phosh-keypad button:active {
+  background: @theme_selected_bg_color;
+}
+
+/* Keyboard focus still needs to be visible, as a ring rather than a fill so
+   it cannot be mistaken for a pressed key. */
+phosh-keypad button:focus:not(:active) {
+  box-shadow: inset 0 1px 0 alpha(#ffffff,.14),
+              inset 0 0 0 2px alpha(@phosh_fg_color,.35);
+}
+
+/* Hover has to be restated, at a specificity that beats two rules further
+   down this file: the generic `button:hover`, and an upstream FIXME that sets
+   `phosh-keypad button:hover { background: none }` to stop the stock flat
+   keypad double-highlighting. Both outrank the plain `phosh-keypad button`
+   selector, so together they stripped the disc off a hovered key -- and since
+   a touchscreen has no pointer to leave the widget, the tapped key stayed
+   hovered and stayed hollow until another was pressed. That is the key that
+   looked stuck. Hover simply keeps the resting disc: on a touch device there
+   is no meaningful hover to show. */
+phosh-keypad button:hover:not(:active) {
+  background: alpha(@theme_selected_bg_color, 0.75);
+}
+
+/* Unlock, given the keypad disc treatment so it reads as part of the keypad.
+   The colour is repeated on the label child for the same reason the checked
+   quick setting needs it: the GTK theme sets a colour on the button's own
+   nodes, which beats inheriting the one set here. */
+phosh-lockscreen .text-only-button,
+phosh-lockscreen .text-only-button label {
+  color: @phosh_fg_color;
+  /* Same shadow as a keypad digit, so the two read as one control group. This
+     was briefly dropped because a white shadow on a saturated disc looked like
+     a glow; the shadow is dark in both schemes now, which reads as depth. */
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
 }
 
 phosh-lockscreen .text-only-button {
   font-size: 16px;
   font-weight: bold;
   padding: 16px 36px;
+  background: alpha(@theme_selected_bg_color, .75);
+  box-shadow: inset 0 1px 0 alpha(#ffffff,.14),
+              inset 0 0 0 1px alpha(#ffffff,.09);
 }
 
+/* btn_submit ships insensitive and only wakes up once a digit is entered, so
+   disabled is the state normally on screen. Adwaita would grey it with
+   insensitive_fg_color, a mix toward the background that throws away the
+   chosen text colour entirely. Fading the label instead was the next attempt
+   and it was still wrong: any fade at all is read as the button ignoring the
+   colour setting, because that is indistinguishable from what Adwaita was
+   doing. So the label keeps its colour at full strength and the disc alone
+   carries the disabled state, which is the part of the button whose colour
+   nobody chose. */
+phosh-lockscreen .text-only-button:disabled,
+phosh-lockscreen .text-only-button:disabled label {
+  color: @phosh_fg_color;
+}
+
+phosh-lockscreen .text-only-button:disabled {
+  /* The generic `button:disabled` a few hundred lines down sets opacity 0.5,
+     which fades the whole widget after its colour is resolved and so survived
+     every attempt to fix this by setting a colour. That is what kept the
+     Unlock label washed out. */
+  opacity: 1;
+  background: alpha(@theme_selected_bg_color, .75);
+  box-shadow: inset 0 1px 0 alpha(#ffffff,.14),
+              inset 0 0 0 1px alpha(#ffffff,.09);
+}
+
+/* :active only, same touchscreen reason as the keypad */
+phosh-lockscreen .text-only-button:active {
+  background: @theme_selected_bg_color;
+}
+
+phosh-lockscreen .text-only-button:focus:not(:active):not(:disabled) {
+  box-shadow: inset 0 1px 0 alpha(#ffffff,.14),
+              inset 0 0 0 2px alpha(@phosh_fg_color,.35);
+}
+
+/* In-call display on the lock screen: glass over the blur like everything
+   else there, rather than an opaque neutral bar */
 phosh-lockscreen cui-call-display actionbar {
-  background-color: @phosh_bg_color;
+  background-color: @phosh_glass_lock_color;
 }
 
 phosh-lockscreen cui-call-display label {
-  text-shadow: 1px 1px 1.1px rgba(0, 0, 0, 0.3);
+  text-shadow: 1px 1px 1px @phosh_text_shadow_color;
+}
+
+/* Lock screen cards: calendar, ticket box, upcoming events.
+   These lean on .dim-label and GtkCalendar's own dimmed nodes for hierarchy,
+   both of which fade text with opacity rather than colour. Opacity is applied
+   after the colour is resolved, so it survives every setting we have and made
+   the day names, the "No events" placeholder and the event rows look washed
+   out no matter what text colour was chosen. Take the fade off and let the
+   chosen colour through at full strength. */
+phosh-lockscreen .dim-label,
+phosh-lockscreen calendar.highlight,
+phosh-lockscreen calendar,
+phosh-lockscreen calendar label {
+  opacity: 1;
+  color: @phosh_fg_color;
+}
+
+/* Days outside the month shown stay quieter -- that is real information, not
+   decoration -- but as a tint of the chosen colour rather than a fade. */
+phosh-lockscreen calendar:disabled {
+  color: alpha(@phosh_fg_color, .45);
+}
+
+/* The cards' symbolic icons, most visibly the ticket box's document glyph.
+   Symbolic icons are painted in the current foreground, so they should have
+   followed already -- but the row widgets they sit in dim them by their own
+   means, which is how a black icon came out grey. State it here. */
+phosh-lockscreen phosh-ticket-box image,
+phosh-lockscreen phosh-ticket-row image,
+phosh-lockscreen phosh-calendar image,
+phosh-lockscreen phosh-upcoming-events image,
+phosh-lockscreen phosh-launcher-box image,
+phosh-lockscreen row image {
+  color: @phosh_fg_color;
+  opacity: 1;
 }
 
 phosh-lockscreen .phosh-notification-tray {
@@ -610,6 +817,21 @@ phosh-lockscreen phosh-widget-box {
   margin-right: 6px;
 }
 
+/* The back button on the widget page, given the keypad disc treatment so it
+   belongs to the cards it sits above */
+phosh-lockscreen button.circular.image-button {
+  color: @phosh_fg_color;
+  background: alpha(@theme_selected_bg_color, .75);
+  box-shadow: inset 0 1px 0 alpha(#ffffff,.14),
+              inset 0 0 0 1px alpha(#ffffff,.09);
+}
+
+phosh-lockscreen button.circular.image-button:hover,
+phosh-lockscreen button.circular.image-button:active,
+phosh-lockscreen button.circular.image-button:focus {
+  background: @theme_selected_bg_color;
+}
+
 /*
  * System modal dialogs (polkit, gcr, ...)
  */
@@ -619,10 +841,10 @@ phosh-lockscreen phosh-widget-box {
 }
 
 .phosh-system-modal-dialog {
-  background-color: @theme_bg_color;
+  background-color: alpha(@theme_bg_color, .96);
   border: 1px solid @phosh_borders_color;
-  border-radius: 12px;
-  box-shadow: 0 2px 4px 0 rgba(0,0,0,.2);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px 0 rgba(0,0,0,.3);
   padding: 0px;
   padding-top: 18px;
   margin: 12px;
@@ -643,19 +865,19 @@ phosh-lockscreen phosh-widget-box {
 }
 
 .phosh-system-modal-dialog-buttons button:first-child {
-  border-bottom-left-radius: 11px;
+  border-bottom-left-radius: 15px;
   border-bottom-right-radius: 0;
 }
 
 .phosh-system-modal-dialog-buttons button:last-child {
   border-bottom-left-radius: 0;
-  border-bottom-right-radius: 11px;
+  border-bottom-right-radius: 15px;
   border-right: none;
 }
 
 .phosh-system-modal-dialog-buttons button:only-child {
-  border-bottom-left-radius: 11px;
-  border-bottom-right-radius: 11px;
+  border-bottom-left-radius: 15px;
+  border-bottom-right-radius: 15px;
 }
 
 .phosh-system-modal-dialog-content {
@@ -748,16 +970,16 @@ phosh-notification-content .actions-area button {
 }
 
 phosh-notification-content .actions-area button:only-child {
-  border-bottom-left-radius: 10px;
-  border-bottom-right-radius: 10px;
+  border-bottom-left-radius: 14px;
+  border-bottom-right-radius: 14px;
   box-shadow: none;
 }
 
 phosh-notification-content .actions-area button:first-child {
-  border-bottom-left-radius: 10px;
+  border-bottom-left-radius: 14px;
 }
 phosh-notification-content .actions-area button:last-child {
-  border-bottom-right-radius: 10px;
+  border-bottom-right-radius: 14px;
   box-shadow: none;
 }
 
@@ -795,9 +1017,12 @@ phosh-notification-frame .header-area image {
 }
 
 phosh-notification-frame .notification-container {
-  border-radius: 12px;
+  border-radius: 16px;
   border: none;
   background-color: @phosh_notification_bg_color;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25),
+              inset 0 1px 0 alpha(@phosh_fg_color,.07),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.05);
 }
 
 /* Banner */
@@ -814,7 +1039,9 @@ phosh-notification-banner > phosh-notification-frame {
 phosh-notification-banner .notification-container {
   margin: 6px;
   box-shadow: 0px 1px 4px 0px rgba(0, 0, 0, 0.33),
-              0px 2px 4px 2px rgba(0, 0, 0, 0.07);
+              0px 2px 4px 2px rgba(0, 0, 0, 0.07),
+              inset 0 1px 0 alpha(@phosh_fg_color,.07),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.05);
 }
 
 /* Notification Tray */
@@ -849,9 +1076,12 @@ phosh-notification-banner .notification-container {
 phosh-call-notification {
   padding: 12px;
   color: @phosh_fg_color;
-  border-radius: 12px;
+  border-radius: 16px;
   border: none;
   background-color: @phosh_notification_bg_color;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25),
+              inset 0 1px 0 alpha(@phosh_fg_color,.07),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.05);
 }
 
 /*
@@ -932,9 +1162,11 @@ phosh-call-notification {
 phosh-media-player {
   background: @phosh_notification_bg_color;
   color: @phosh_fg_color;
-  border-radius: 12px;
+  border-radius: 16px;
   border:none;
-  box-shadow: none;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25),
+              inset 0 1px 0 alpha(@phosh_fg_color,.07),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.05);
   padding: 6px;
   padding-bottom: 0;
 }
@@ -970,7 +1202,7 @@ phosh-media-player .media-player-details:disabled {
 phosh-media-player .phosh-media-player-art {
   margin: 0;
   padding: 0;
-  border-radius: 3px;
+  border-radius: 6px;
 }
 
 phosh-media-player .progress-bar {
@@ -990,7 +1222,9 @@ phosh-media-player > box > button {
 #osd-bubble {
   border-radius: 32px;
   box-shadow: 0 2px 2px rgba(0,0,0,0.2),
-              0 3px 16px rgba(0,0,0,0.1);
+              0 3px 16px rgba(0,0,0,0.1),
+              inset 0 1px 0 alpha(@phosh_fg_color,.08),
+              inset 0 0 0 1px alpha(@phosh_fg_color,.05);
   background-color: shade(@phosh_notification_bg_color, 1.5);
   color: @phosh_fg_color;
   text-shadow: none;
@@ -1129,7 +1363,7 @@ phosh-emergency-menu .emergency-button {
 
 /* Use a solid background, useful when one needs to toggle between transparent and solid */
 .p-solid {
-  background-color: @phosh_bg_color;
+  background-color: alpha(@phosh_bg_color, .85);
 }
 
 /*

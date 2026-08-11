@@ -100,6 +100,14 @@
    phosh_status_page_set_header;
    phosh_status_page_set_title;
 
+   # The screenshot quick setting arms a delayed shot in the shell rather than
+   # timing it itself, and folds the drawer away so the shot is of something
+   # other than the drawer
+   phosh_shell_get_screenshot_manager;
+   phosh_shell_fold_top_panel;
+   phosh_screenshot_manager_get_type;
+   phosh_screenshot_manager_take_screenshot_delayed;
+
    # The plugins use our gtk-list-models:
    gtk_filter_list_model_*;
    gtk_sort_list_model_*;

@@ -52,6 +52,7 @@
     <file preprocess="xml-stripblanks">ui/wifi-status-page.ui</file>
     <file compressed="true">stylesheet/adwaita-dark.css</file>
     <file compressed="true">stylesheet/adwaita-hc-light.css</file>
+    <file compressed="true">stylesheet/adwaita-light.css</file>
     <file compressed="true">stylesheet/common.css</file>
   </gresource>
   <gresource prefix="/mobi/phosh/icons/">
